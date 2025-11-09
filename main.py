@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 
 class DataLoader:
     def __init__(self):
-        self.scaler = StandardScaler()
+        self.scalers = {}  # Store scaler for each disease
     
     def load_diabetes_data(self):
         try:
@@ -95,35 +95,38 @@ class DataLoader:
             return None
     
     def load_kidney_data(self):
+        """Load kidney disease data with exactly 23 features (matching Streamlit expectations)"""
         np.random.seed(42)
         n_samples = 400
         
+        # Create exactly 23 features matching Streamlit column names - IN CORRECT ORDER
         data = {
-            'age': np.random.randint(20, 80, n_samples),
-            'bp': np.random.randint(60, 180, n_samples),
-            'sg': np.random.uniform(1.005, 1.025, n_samples),
-            'al': np.random.randint(0, 5, n_samples),
-            'su': np.random.randint(0, 5, n_samples),
-            'rbc': np.random.choice([0, 1], n_samples),
-            'pc': np.random.choice([0, 1], n_samples),
-            'pcc': np.random.choice([0, 1], n_samples),
-            'ba': np.random.choice([0, 1], n_samples),
-            'bgr': np.random.randint(70, 400, n_samples),
-            'bu': np.random.randint(10, 200, n_samples),
-            'cr': np.random.uniform(0.4, 10.0, n_samples),
-            'na': np.random.randint(120, 145, n_samples),
-            'k': np.random.uniform(2.5, 8.0, n_samples),
-            'hemo': np.random.uniform(7, 17, n_samples),
-            'wc': np.random.randint(3, 15, n_samples),
-            'rc': np.random.uniform(3, 6, n_samples),
-            'htn': np.random.choice([0, 1], n_samples),
-            'dm': np.random.choice([0, 1], n_samples),
-            'cad': np.random.choice([0, 1], n_samples),
-            'appet': np.random.choice([0, 1], n_samples),
-            'pe': np.random.choice([0, 1], n_samples),
-            'ane': np.random.choice([0, 1], n_samples)
+            'Age': np.random.randint(20, 80, n_samples),
+            'BP': np.random.randint(60, 180, n_samples),
+            'SpecificGravity': np.random.uniform(1.005, 1.025, n_samples),
+            'Albumin': np.random.randint(0, 5, n_samples),
+            'Sugar': np.random.randint(0, 5, n_samples),
+            'RBC': np.random.choice([0, 1], n_samples),
+            'PusCells': np.random.choice([0, 1], n_samples),
+            'PusCellClumps': np.random.choice([0, 1], n_samples),
+            'Bacteria': np.random.choice([0, 1], n_samples),
+            'BloodGlucose': np.random.randint(70, 400, n_samples),
+            'BloodUrea': np.random.randint(10, 200, n_samples),
+            'SerumCreatinine': np.random.uniform(0.4, 10.0, n_samples),
+            'Sodium': np.random.randint(120, 145, n_samples),
+            'Potassium': np.random.uniform(2.5, 8.0, n_samples),
+            'Hemoglobin': np.random.uniform(7, 17, n_samples),
+            'PCV': np.random.randint(9, 54, n_samples),
+            'WBC': np.random.randint(2200, 26000, n_samples),
+            'RBC_Count': np.random.uniform(2.1, 8.0, n_samples),
+            'Hypertension': np.random.choice([0, 1], n_samples),
+            'DiabetesMellitus': np.random.choice([0, 1], n_samples),
+            'CAD': np.random.choice([0, 1], n_samples),
+            'Appetite': np.random.choice([0, 1], n_samples),
+            'PedalEdema': np.random.choice([0, 1], n_samples)
         }
         
+        # Create target variable
         target = np.concatenate([np.zeros(n_samples//2), np.ones(n_samples//2)]).astype(int)
         np.random.shuffle(target)
         data['class'] = target
@@ -157,13 +160,24 @@ class DataLoader:
             df = self.load_kidney_data()
             target = 'class'
             expected_features = 23
+        else:
+            return None
         
         if df is None:
+            print(f"Failed to load data for {disease_type}")
             return None
         
         df = self.preprocess(df)
         X = df.drop(target, axis=1)
         y = df[target]
+        
+        print(f"{disease_type.upper()} - X shape: {X.shape}, Features: {len(X.columns)}")
+        print(f"Feature order: {list(X.columns)}")
+        
+        # Validate feature count
+        if X.shape[1] != expected_features:
+            print(f"❌ ERROR: {disease_type} - Expected {expected_features} features, got {X.shape[1]}")
+            return None
         
         if len(np.unique(y)) == 1:
             n = len(y)
@@ -173,17 +187,24 @@ class DataLoader:
         else:
             y = (y > y.median()).astype(int)
         
-        if X.shape[1] != expected_features:
-            print(f"Warning: Expected {expected_features} features, got {X.shape[1]}")
-        
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y
         )
         
-        X_train_scaled = self.scaler.fit_transform(X_train)
-        X_test_scaled = self.scaler.transform(X_test)
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
         
-        return X_train_scaled, X_test_scaled, y_train, y_test, self.scaler
+        # Store scaler and feature order for later use
+        self.scalers[disease_type] = {
+            'scaler': scaler,
+            'feature_names': list(X.columns),
+            'expected_features': expected_features
+        }
+        
+        print(f"✅ {disease_type.upper()} - Train: {X_train_scaled.shape}, Test: {X_test_scaled.shape}\n")
+        
+        return X_train_scaled, X_test_scaled, y_train, y_test, scaler, list(X.columns)
 
 
 class DiseasePredictor:
@@ -193,6 +214,8 @@ class DiseasePredictor:
         self.ensemble_model = None
     
     def train_models(self, X_train, y_train):
+        print(f"Training models for {self.disease_type}...")
+        
         self.models['LR'] = LogisticRegression(max_iter=1000, random_state=42)
         self.models['LR'].fit(X_train, y_train)
         
@@ -209,11 +232,12 @@ class DiseasePredictor:
         self.models['MLP'].fit(X_train, y_train)
     
     def evaluate_models(self, X_test, y_test):
+        print(f"Evaluating models for {self.disease_type}:")
         for name, model in self.models.items():
             y_pred_proba = model.predict_proba(X_test)[:, 1]
             auc = roc_auc_score(y_test, y_pred_proba)
             acc = accuracy_score(y_test, model.predict(X_test))
-            print(f"{name}: Accuracy: {acc:.4f} | AUC: {auc:.4f}")
+            print(f"  {name}: Accuracy: {acc:.4f} | AUC: {auc:.4f}")
     
     def create_ensemble(self, X_train, y_train, X_test, y_test):
         ensemble = VotingClassifier(
@@ -234,12 +258,13 @@ class DiseasePredictor:
         auc = roc_auc_score(y_test, y_pred_proba)
         acc = accuracy_score(y_test, ensemble.predict(X_test))
         
-        print(f"Ensemble - Accuracy: {acc:.4f} | AUC-ROC: {auc:.4f}")
+        print(f"✅ ENSEMBLE - Accuracy: {acc:.4f} | AUC-ROC: {auc:.4f}\n")
     
     def save_model(self):
         os.makedirs('models', exist_ok=True)
         model_path = f'models/{self.disease_type}_ensemble.pkl'
         joblib.dump(self.ensemble_model, model_path)
+        print(f"✅ Model saved: {model_path}")
 
 
 class PatientClustering:
@@ -272,17 +297,23 @@ class PatientClustering:
 def main():
     diseases = ['diabetes', 'heart', 'liver', 'kidney']
     
+    print("=" * 60)
+    print("🏥 DISEASE PREDICTION MODEL TRAINING")
+    print("=" * 60 + "\n")
+    
     for disease in diseases:
-        print(f"Training models for {disease}...")
+        print(f"{'=' * 60}")
+        print(f"Processing: {disease.upper()}")
+        print(f"{'=' * 60}")
         
         loader = DataLoader()
         result = loader.get_train_test_data(disease)
         
         if result is None:
-            print(f"Skipping {disease}")
+            print(f"❌ SKIPPING {disease.upper()} - Data loading failed\n")
             continue
         
-        X_train, X_test, y_train, y_test, scaler = result
+        X_train, X_test, y_train, y_test, scaler, feature_names = result
         
         predictor = DiseasePredictor(disease)
         predictor.train_models(X_train, y_train)
@@ -293,10 +324,12 @@ def main():
         clustering = PatientClustering(n_clusters=3)
         clustering.fit(X_train)
         risk_levels = clustering.predict_risk(X_test[:5])
-        
-        print(f"Clustering complete for {disease}\n")
+        print(f"Sample risk predictions: {risk_levels}")
+        print()
     
-    print("Training complete. Models saved in: models/")
+    print("=" * 60)
+    print("✅ TRAINING COMPLETE - Models saved in: models/")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

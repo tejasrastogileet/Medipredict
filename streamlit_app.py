@@ -15,14 +15,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.sidebar.title("🏥 Disease Prediction System")
-st.sidebar.write("Advanced ML for Medical Risk Assessment")
+st.sidebar.title("🏥 MediPredict")
+st.sidebar.write("Detect Early, Live Healthy")
 st.sidebar.divider()
 
-API_URL = "http://localhost:8000"
+API_URL = "https://medipredict-ccsx.onrender.com"
 
 try:
-    response = requests.get(f"{API_URL}/health", timeout=2)
+    response = requests.get(f"{API_URL}/health", timeout=5)
     if response.status_code == 200:
         st.sidebar.success("✅ API Connected")
         api_connected = True
@@ -31,27 +31,21 @@ try:
         api_connected = False
 except:
     st.sidebar.error("❌ API Not Running")
-    st.sidebar.error("Run: uvicorn app:app --reload")
+    st.sidebar.error("Backend: Local Development")
     api_connected = False
 
 st.sidebar.divider()
 st.sidebar.info("""
-**Setup Instructions:**
+**Backend Status:**
 
-1️⃣ **Terminal 1:**
-```
-python main.py
-```
+🔗 Deployed on Render
+https://medipredict-ccsx.onrender.com
 
-2️⃣ **Terminal 2:**
-```
-uvicorn app:app --reload
-```
+**Frontend:** Streamlit Cloud
+🚀 Deployed & Live
 
-3️⃣ **Terminal 3:**
-```
-streamlit run streamlit_app.py
-```
+**⏱️ Note:** First request takes ~50s
+(Render free tier cold starts)
 """)
 
 tab1, tab2, tab3, tab4 = st.tabs(["🔮 Predict", "📊 Analytics", "ℹ️ About", "📚 Guide"])
@@ -78,7 +72,9 @@ with tab1:
     
     st.divider()
     
-    # DIABETES - 8 Features (ALREADY CORRECT)
+    features = []
+    feature_names = []
+    
     if disease == "diabetes":
         st.write("**📋 Enter Patient Details:**")
         col1, col2, col3 = st.columns(3)
@@ -100,7 +96,6 @@ with tab1:
         features = [pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, diabetes_pedigree, age]
         feature_names = ["Pregnancies", "Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "DiabetesPedigree", "Age"]
     
-    # HEART DISEASE - 13 Features (FIXED FROM 9)
     elif disease == "heart":
         st.write("**📋 Enter Patient Details:**")
         col1, col2, col3, col4 = st.columns(4)
@@ -127,10 +122,8 @@ with tab1:
             thal = st.number_input("💓 Thal (0-3)", 0, 3, 2, help="Thalassemia: 0=normal, 1=fixed defect, 2=reversible defect")
         
         features = [age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal]
-        feature_names = ["Age", "Sex", "ChestPain", "RestingBP", "Cholesterol", "FastingBloodSugar", 
-                         "RestingECG", "MaxHeartRate", "ExerciseAngina", "STDepression", "Slope", "CA", "Thal"]
+        feature_names = ["Age", "Sex", "ChestPain", "RestingBP", "Cholesterol", "FastingBloodSugar", "RestingECG", "MaxHeartRate", "ExerciseAngina", "STDepression", "Slope", "CA", "Thal"]
     
-    # LIVER DISEASE - 10 Features (FIXED FROM 9)
     elif disease == "liver":
         st.write("**📋 Enter Patient Details:**")
         col1, col2, col3, col4 = st.columns(4)
@@ -153,13 +146,10 @@ with tab1:
             albumin = st.number_input("🧬 Albumin", 2.0, 5.0, 3.5, step=0.1, help="Albumin level")
             ag_ratio = st.number_input("🧬 A/G Ratio", 0.5, 2.0, 1.0, step=0.1, help="Albumin/Globulin Ratio")
         
-        features = [age, gender, total_bilirubin, direct_bilirubin, alkaline_phosphatase, 
-                    alamine_aminotransferase, aspartate_aminotransferase, total_proteins, albumin, ag_ratio]
-        feature_names = ["Age", "Gender", "TotalBilirubin", "DirectBilirubin", "AlkalinePhosphatase", 
-                         "ALT", "AST", "TotalProteins", "Albumin", "A/G_Ratio"]
+        features = [age, gender, total_bilirubin, direct_bilirubin, alkaline_phosphatase, alamine_aminotransferase, aspartate_aminotransferase, total_proteins, albumin, ag_ratio]
+        feature_names = ["Age", "Gender", "TotalBilirubin", "DirectBilirubin", "AlkalinePhosphatase", "ALT", "AST", "TotalProteins", "Albumin", "A/G_Ratio"]
     
-    # KIDNEY DISEASE - 23 Features (FIXED FROM 9)
-    else:  # kidney
+    elif disease == "kidney":
         st.write("**📋 Enter Patient Details:**")
         
         with st.expander("🔍 Basic Information", expanded=True):
@@ -193,29 +183,27 @@ with tab1:
                 rc = st.number_input("🔴 Red Blood Cell Count (millions/cmm)", 2.1, 8.0, 4.5, step=0.1, help="RBC count")
         
         with st.expander("🏥 Medical History"):
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             with col1:
                 htn = st.selectbox("💉 Hypertension", [0, 1], format_func=lambda x: "No" if x == 0 else "Yes", help="Hypertension")
                 dm = st.selectbox("🩺 Diabetes Mellitus", [0, 1], format_func=lambda x: "No" if x == 0 else "Yes", help="Diabetes mellitus")
-            with col2:
                 cad = st.selectbox("❤️ Coronary Artery Disease", [0, 1], format_func=lambda x: "No" if x == 0 else "Yes", help="CAD")
+            with col2:
                 appet = st.selectbox("🍽️ Appetite", [0, 1], format_func=lambda x: "Good" if x == 0 else "Poor", help="Appetite")
-            with col3:
                 pe = st.selectbox("🦵 Pedal Edema", [0, 1], format_func=lambda x: "No" if x == 0 else "Yes", help="Pedal edema")
-                ane = st.selectbox("🩸 Anemia", [0, 1], format_func=lambda x: "No" if x == 0 else "Yes", help="Anemia")
         
-        features = [age, bp, sg, al, su, rbc, pc, pcc, ba, bgr, bu, sc, sod, pot, hemo, pcv, wc, rc, htn, dm, cad, appet, pe, ane]
-        feature_names = ["Age", "BP", "SpecificGravity", "Albumin", "Sugar", "RBC", "PusCells", 
-                         "PusCellClumps", "Bacteria", "BloodGlucose", "BloodUrea", "SerumCreatinine",
-                         "Sodium", "Potassium", "Hemoglobin", "PCV", "WBC", "RBC_Count", 
-                         "Hypertension", "DiabetesMellitus", "CAD", "Appetite", "PedalEdema", "Anemia"]
+        features = [age, bp, sg, al, su, rbc, pc, pcc, ba, bgr, bu, sc, sod, pot, hemo, pcv, wc, rc, htn, dm, cad, appet, pe]
+        feature_names = ["Age", "BP", "SpecificGravity", "Albumin", "Sugar", "RBC", "PusCells", "PusCellClumps", "Bacteria", "BloodGlucose", "BloodUrea", "SerumCreatinine", "Sodium", "Potassium", "Hemoglobin", "PCV", "WBC", "RBC_Count", "Hypertension", "DiabetesMellitus", "CAD", "Appetite", "PedalEdema"]
     
     st.divider()
     
     with st.expander("📊 Input Summary"):
-        summary_df = pd.DataFrame({"Feature": feature_names, "Value": features})
-        st.dataframe(summary_df, use_container_width=True)
-        st.info(f"✅ Total Features: {len(features)}")
+        if len(features) > 0:
+            summary_df = pd.DataFrame({"Feature": feature_names, "Value": features})
+            st.dataframe(summary_df, use_container_width=True)
+            st.info(f"✅ Total Features: {len(features)}")
+        else:
+            st.warning("⚠️ No features loaded")
     
     st.divider()
     
@@ -224,9 +212,11 @@ with tab1:
         predict_button = st.button("🔮 Make Prediction", use_container_width=True, type="primary")
     
     if predict_button:
-        if not api_connected:
+        if len(features) == 0:
+            st.error("❌ No features to predict!")
+        elif not api_connected:
             st.error("❌ API is not connected!")
-            st.info("Run: `uvicorn app:app --reload`")
+            st.info("Make sure FastAPI backend is running: uvicorn app:app --reload")
         else:
             with st.spinner("🔄 Analyzing patient data..."):
                 try:
@@ -234,7 +224,7 @@ with tab1:
                     response = requests.post(
                         f"{API_URL}/predict",
                         json={"disease_type": disease, "features": features},
-                        timeout=10
+                        timeout=15
                     )
                     
                     if response.status_code == 200:
@@ -294,33 +284,26 @@ with tab1:
                         st.error(f"❌ Error: {response.json()['detail']}")
                 except requests.exceptions.ConnectionError:
                     st.error("❌ Cannot connect to API!")
-                    st.info("Run: `uvicorn app:app --reload`")
+                    st.info("⏱️ Render free tier takes ~50s to wake up. Please wait and try again.")
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
 
 with tab2:
     st.header("📊 Model Analytics & Performance")
-    
     col1, col2 = st.columns(2)
-    
     with col1:
         st.subheader("🤖 Model Performance Comparison")
-        data = {
-            'Model': ['Logistic\nRegression', 'Random\nForest', 'XGBoost', 'Gradient\nBoosting', 'MLP', 'Ensemble'],
-            'AUC-ROC': [0.88, 0.90, 0.91, 0.89, 0.87, 0.94]
-        }
+        data = {'Model': ['Logistic\nRegression', 'Random\nForest', 'XGBoost', 'Gradient\nBoosting', 'MLP', 'Ensemble'], 'AUC-ROC': [0.88, 0.90, 0.91, 0.89, 0.87, 0.94]}
         df = pd.DataFrame(data)
         fig = px.bar(df, x='Model', y='AUC-ROC', title='Model AUC-ROC Comparison', color='AUC-ROC', color_continuous_scale='Viridis', height=400)
         fig.add_hline(y=0.90, line_dash="dash", line_color="red", annotation_text="🎯 Threshold (0.90)")
         st.plotly_chart(fig, use_container_width=True)
-    
     with col2:
         st.subheader("🏥 Disease Support Status")
         diseases_data = {'Disease': ['Diabetes', 'Heart', 'Liver', 'Kidney'], 'Status': [1, 1, 1, 1]}
         df_diseases = pd.DataFrame(diseases_data)
         fig = px.pie(df_diseases, names='Disease', values='Status', title='Diseases Supported', height=400, color_discrete_sequence=['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A'])
         st.plotly_chart(fig, use_container_width=True)
-    
     st.divider()
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -331,130 +314,45 @@ with tab2:
         st.metric("🏥 Diseases", "4", "Support")
     with col4:
         st.metric("📊 Avg Accuracy", "91%", "+2%")
-    
-    st.divider()
-    st.subheader("📈 Detailed Performance Metrics")
-    performance_data = {
-        'Model': ['Logistic Regression', 'Random Forest', 'XGBoost', 'Gradient Boosting', 'MLP', 'Ensemble'],
-        'Accuracy': [0.7821, 0.8234, 0.8156, 0.8045, 0.7934, 0.8567],
-        'AUC': [0.8456, 0.8934, 0.9123, 0.8923, 0.8745, 0.9234],
-        'Precision': [0.75, 0.82, 0.84, 0.81, 0.79, 0.87],
-        'Recall': [0.70, 0.81, 0.83, 0.79, 0.78, 0.85]
-    }
-    perf_df = pd.DataFrame(performance_data)
-    st.dataframe(perf_df, use_container_width=True)
-    
-    st.divider()
-    st.subheader("📋 Feature Requirements by Disease")
-    feature_info = {
-        'Disease': ['Diabetes', 'Heart', 'Liver', 'Kidney'],
-        'Features': [8, 13, 10, 23],
-        'Status': ['✅ Working', '✅ Fixed', '✅ Fixed', '✅ Fixed']
-    }
-    feature_df = pd.DataFrame(feature_info)
-    st.dataframe(feature_df, use_container_width=True)
 
 with tab3:
     st.header("ℹ️ About This System")
     col1, col2 = st.columns([2, 1])
-    
     with col1:
         st.write("""
-        ### 🏥 Advanced Disease Prediction ML System
+        ### 🏥 MediPredict - Advanced Disease Prediction ML System
+        **Detect Early, Live Healthy**
         
-        **5-Model Ensemble:**
-        - Logistic Regression
-        - Random Forest
-        - XGBoost
-        - Gradient Boosting
-        - Neural Networks (MLP)
+        **5-Model Ensemble:** Logistic Regression, Random Forest, XGBoost, Gradient Boosting, Neural Networks
         
-        **Performance:**
-        - AUC-ROC: > 0.92
-        - Accuracy: ~91%
-        - Precision: ~87%
-        - Recall: ~85%
+        **Performance:** AUC-ROC > 0.92 | Accuracy ~91% | Precision ~87% | Recall ~85%
         
-        **Diseases:**
-        - 🩺 Diabetes (8 features)
-        - ❤️ Heart Disease (13 features)
-        - 🟠 Liver Disease (10 features)
-        - 💧 Kidney Disease (23 features)
-        
-        **Tech Stack:**
-        - scikit-learn, XGBoost, TensorFlow
-        - FastAPI, Streamlit
-        - Pandas, NumPy, Plotly
+        **Diseases:** 🩺 Diabetes (8) | ❤️ Heart (13) | 🟠 Liver (10) | 💧 Kidney (23)
         """)
-    
     with col2:
         st.write("""
         ### ⚖️ Disclaimer
-        
         ⚠️ **EDUCATIONAL ONLY**
-        
         ❌ NOT for medical diagnosis
-        ❌ NOT medical advice
-        ❌ Consult doctors
-        
-        **Always contact:**
-        - ✅ Healthcare professionals
-        - ✅ Licensed doctors
-        - ✅ Medical specialists
+        ✅ Consult healthcare professionals
         """)
 
 with tab4:
     st.header("📚 User Guide")
     st.write("""
     ### Setup
+    **Terminal 1:** `uvicorn app:app --reload`
+    **Terminal 2:** `streamlit run streamlit_app.py`
     
-    **Terminal 1:** `python main.py`
-    **Terminal 2:** `uvicorn app:app --reload`
-    **Terminal 3:** `streamlit run streamlit_app.py`
-    
-    ### Usage
-    
-    1. Select disease
-    2. Enter patient data
-    3. Click "Make Prediction"
-    4. View results
-    
-    ### Risk Levels
-    
-    - 🟢 Low Risk (< 40%)
-    - 🟡 Medium Risk (40-70%)
-    - 🔴 High Risk (> 70%)
-    
-    ### Feature Requirements
-    
-    - **Diabetes:** 8 features
-    - **Heart:** 13 features
-    - **Liver:** 10 features
-    - **Kidney:** 23 features
-    
-    ### Troubleshooting
-    
-    **API Not Connected:**
-    - Run `uvicorn app:app --reload`
-    - Refresh page
-    
-    **Models Not Found:**
-    - Run `python main.py` first
-    - Wait for completion
-    
-    **Feature Mismatch Error:**
-    - Make sure models are trained
-    - Check feature count in Input Summary
-    
-    **Import Error:**
-    - `pip install [package_name]`
+    ### Features by Disease
+    - Diabetes: 8 features | Heart: 13 features | Liver: 10 features | Kidney: 23 features
     """)
 
 st.divider()
 footer_col1, footer_col2, footer_col3 = st.columns([1, 1, 1])
 with footer_col1:
-    st.write("**🏥 Disease Prediction**\nv1.0.0")
+    st.write("**🏥 MediPredict**\nv1.0.0")
 with footer_col2:
     st.write("**Status:**\n✅ Operational" if api_connected else "❌ API Down")
 with footer_col3:
-    st.write("**Purpose:**\n🎓 Educational ML")
+    st.write("**Purpose:**\n🎓 ML Healthcare")
